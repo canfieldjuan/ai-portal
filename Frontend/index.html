@@ -1,0 +1,72 @@
+<!-- frontend/index.html (v3.0 - Unified) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Command Center</title>
+    <link rel="stylesheet" href="/frontend/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Command Center V3</h1>
+            <p>Unified AI Portal with Chat, Agent Delegation, and File Uploads.</p>
+            <div class="status-bar">
+                <div class="status-item active" id="session-status">Session: ...</div>
+                <div class="status-item" id="model-status">Model: Standby</div>
+                <div class="status-item" id="cost-status">Cost: $0.0000</div>
+                <div class="status-item" id="time-status">Time: 0s</div>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai">
+                    <div class="message-content">
+                        ✅ **System Restored & Unified:** All features are online. You can now chat, use slash commands for agent tasks (e.g., `/develop New Login Page`), and drag-and-drop files for upload.
+                    </div>
+                    <div class="message-meta">AI Partner • Ready</div>
+                </div>
+            </div>
+
+            <div class="input-area" id="inputArea">
+                <!-- RESTORED: File Drop Zone from your original design -->
+                <div class="drop-zone" id="dropZone">
+                    <p>📁 Drag & Drop Files Here or Click to Select</p>
+                </div>
+                <div class="file-attachments" id="fileAttachments"></div>
+                <input type="file" id="fileInput" multiple style="display: none;">
+
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label>Routing Mode</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="routingModeToggle" class="toggle-switch-checkbox" checked>
+                            <label class="toggle-switch-label" for="routingModeToggle">
+                                <span class="toggle-switch-inner"></span>
+                                <span class="toggle-switch-switch"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="control-group" id="taskTypeGroup">
+                        <label for="taskTypeSelect">Manual Task Type</label>
+                        <select id="taskTypeSelect" class="control-select">
+                            <option value="simple_qa">Simple Q&A</option>
+                            <option value="code_generation">Code Generation</option>
+                            <option value="creative_writing">Creative Writing</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <textarea class="input-field" id="messageInput" placeholder="Send a message or use a slash command..." rows="1"></textarea>
+                    </div>
+                    <button class="send-button" id="sendButton">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/frontend/script.js"></script>
+</body>
+</html>
