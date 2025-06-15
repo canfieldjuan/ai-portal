@@ -19,7 +19,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, Integer, DateTime, Text, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -361,9 +361,19 @@ class UnifiedAIPortal:
         if not os.path.exists("uploads"): 
             os.makedirs("uploads")
         
-        # Check if frontend directory exists
+        # Check if frontend directory exists (handle both cases)
+        self.frontend_dir = None
         if os.path.exists("frontend"):
-            self.app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+            self.frontend_dir = "frontend"
+        elif os.path.exists("Frontend"):
+            self.frontend_dir = "Frontend"
+        
+        if self.frontend_dir:
+            # Mount frontend files at root level for proper serving
+            self.app.mount("/static", StaticFiles(directory=self.frontend_dir), name="static")
+            logger.info(f"Frontend static files mounted from: {self.frontend_dir}")
+        else:
+            logger.warning("No frontend directory found (checked 'frontend' and 'Frontend')")
         
         self.app.add_middleware(
             CORSMiddleware, 
@@ -386,17 +396,246 @@ class UnifiedAIPortal:
         self.setup_routes()
 
     def setup_routes(self):
+        @self.app.get("/debug/files")
+        async def debug_files():
+            """Debug endpoint to show file structure"""
+            import glob
+            
+            info = {
+                "current_directory": os.getcwd(),
+                "frontend_dir_found": self.frontend_dir,
+                "directories": [],
+                "frontend_files": [],
+                "all_files": [],
+                "static_mount_check": "/static" in [route.path for route in self.app.routes]
+            }
+            
+            # List all directories
+            try:
+                for item in os.listdir("."):
+                    if os.path.isdir(item):
+                        info["directories"].append(item)
+            except Exception as e:
+                info["directories"] = [f"Error: {str(e)}"]
+            
+            # Check for frontend files in both possible directories
+            for check_dir in ["frontend", "Frontend"]:
+                if os.path.exists(check_dir):
+                    try:
+                        files = os.listdir(check_dir)
+                        info["frontend_files"].append({
+                            "directory": check_dir,
+                            "files": files
+                        })
+                    except Exception as e:
+                        info["frontend_files"].append({
+                            "directory": check_dir,
+                            "error": str(e)
+                        })
+            
+            # List some key files
+            key_patterns = ["*.html", "*.css", "*.js", "*.py", "*.yaml", "*.yml"]
+            for pattern in key_patterns:
+                try:
+                    info["all_files"].extend(glob.glob(pattern))
+                except Exception as e:
+                    info["all_files"].append(f"Error with {pattern}: {str(e)}")
+            
+            return JSONResponse(content=info)
+
+        @self.app.get("/simple")
+        async def simple_frontend():
+            """Simple inline frontend for testing"""
+            return HTMLResponse(content="""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Portal - Simple Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .chat-area { height: 400px; border: 1px solid #ddd; padding: 15px; overflow-y: auto; background: #fafafa; margin: 20px 0; border-radius: 5px; }
+        .input-area { display: flex; gap: 10px; margin-top: 10px; }
+        .input-area input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .input-area button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .input-area button:hover { background: #0056b3; }
+        .message { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .user { background: #e3f2fd; text-align: right; }
+        .ai { background: #f1f8e9; }
+        .error { background: #ffebee; color: #c62828; }
+        .status { margin: 10px 0; padding: 8px; background: #fff3e0; border-radius: 5px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Portal - Simple Interface</h1>
+        <div class="status" id="status">Ready to chat</div>
+        <div class="chat-area" id="chatArea"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type your message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <p><small>This is a simplified interface. Full frontend should load at <a href="/">/</a></small></p>
+    </div>
+
+    <script>
+        function addMessage(content, type) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = content;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            input.value = '';
+            updateStatus('Sending...');
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: 'simple-test-user',
+                        task_type: 'simple_qa'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    addMessage(data.response, 'ai');
+                    updateStatus(`Response from ${data.model} (${data.response_time.toFixed(2)}s)`);
+                } else {
+                    addMessage(`Error: ${data.response}`, 'error');
+                    updateStatus('Error occurred');
+                }
+            } catch (error) {
+                addMessage(`Network error: ${error.message}`, 'error');
+                updateStatus('Network error');
+            }
+        }
+
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
+            """)
+
+        @self.app.get("/test")
+        async def test_endpoint():
+            """Simple test endpoint"""
+            return {
+                "status": "success",
+                "message": "Test endpoint working",
+                "frontend_dir": self.frontend_dir,
+                "timestamp": time.time()
+            }
+
         @self.app.get("/health")
         async def health_check():
             return {"status": "healthy", "message": "AI Portal is running"}
 
         @self.app.get("/", response_class=HTMLResponse, include_in_schema=False)
         async def root():
-            try:
-                with open("frontend/index.html", "r", encoding="utf-8") as f: 
-                    return HTMLResponse(content=f.read())
-            except FileNotFoundError:
-                return HTMLResponse(content="<h1>AI Portal Backend Running</h1><p>Frontend files not found. <a href='/health'>Check Health</a></p>")
+            if self.frontend_dir:
+                try:
+                    with open(f"{self.frontend_dir}/index.html", "r", encoding="utf-8") as f: 
+                        content = f.read()
+                        # Fix CSS and JS paths to use /static/
+                        content = content.replace('href="/frontend/style.css"', 'href="/static/style.css"')
+                        content = content.replace('src="/frontend/script.js"', 'src="/static/script.js"')
+                        return HTMLResponse(content=content)
+                except FileNotFoundError:
+                    pass
+            
+            # If no frontend found, show backend status
+            return HTMLResponse(content="""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>AI Portal - Backend Running</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+                        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                        h1 { color: #333; margin-bottom: 20px; }
+                        .status { background: #d4edda; padding: 10px; border-radius: 5px; color: #155724; margin: 15px 0; }
+                        .links { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+                        .links a { display: inline-block; margin: 5px 10px; padding: 8px 15px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; }
+                        .links a:hover { background: #0056b3; }
+                        .note { background: #fff3cd; padding: 10px; border-radius: 5px; color: #856404; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>🤖 AI Portal Backend</h1>
+                        
+                        <div class="status">
+                            ✅ Backend is running successfully!
+                        </div>
+                        
+                        <div class="links">
+                            <h3>Available Endpoints:</h3>
+                            <a href="/health">Health Check</a>
+                            <a href="/docs">API Documentation</a>
+                            <a href="/functions/available">Available Functions</a>
+                            <a href="/debug/files">Debug File Structure</a>
+                        </div>
+                        
+                        <div class="note">
+                            <strong>Frontend Issue:</strong> Frontend files not found or not loading properly. 
+                            Check the debug endpoint above to see file structure.
+                        </div>
+                        
+                        <h3>Quick Test:</h3>
+                        <p>Try making a test API call:</p>
+                        <pre>POST /chat
+{
+  "message": "Hello, test message",
+  "user_id": "test-user",
+  "task_type": "simple_qa"
+}</pre>
+                    </div>
+                </body>
+                </html>
+            """)
+
+        # Add individual file serving routes to ensure CSS/JS load
+        @self.app.get("/style.css")
+        @self.app.get("/static/style.css")
+        async def serve_css():
+            if self.frontend_dir:
+                try:
+                    with open(f"{self.frontend_dir}/style.css", "r", encoding="utf-8") as f:
+                        return Response(content=f.read(), media_type="text/css")
+                except FileNotFoundError:
+                    pass
+            raise HTTPException(status_code=404, detail="CSS file not found")
+
+        @self.app.get("/script.js")
+        @self.app.get("/static/script.js")
+        async def serve_js():
+            if self.frontend_dir:
+                try:
+                    with open(f"{self.frontend_dir}/script.js", "r", encoding="utf-8") as f:
+                        return Response(content=f.read(), media_type="application/javascript")
+                except FileNotFoundError:
+                    pass
+            raise HTTPException(status_code=404, detail="JS file not found")
 
         @self.app.post("/chat", response_model=ChatResponse)
         @handle_errors
