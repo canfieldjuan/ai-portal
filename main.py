@@ -449,14 +449,30 @@ class UnifiedAIPortal:
                 session.rollback()
 
     def run(self):
-    import os  # Add this import
-    api_config = self.config.get('api', {})
-    # Render uses PORT environment variable
-    port = int(os.environ.get('PORT', 8000))
-    host = "0.0.0.0"  # Accept external connections
+        import os
+        import uvicorn
     
-    logger.info("Starting Uvicorn server...", host=host, port=port)
-    uvicorn.run(self.app, host=host, port=port)
+    try:
+        api_config = self.config.get('api', {})
+        
+        # Render uses PORT environment variable
+        port = int(os.environ.get('PORT', 8000))
+        host = "0.0.0.0"  # Accept external connections
+        
+        logger.info(f"🚀 Starting Uvicorn server on {host}:{port}")
+        
+        # Start the server with additional config
+        uvicorn.run(
+            self.app, 
+            host=host, 
+            port=port,
+            log_level="info",
+            access_log=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to start server: {e}")
+        raise
 
 if __name__ == "__main__":
     if not os.path.exists("config.yaml"):
