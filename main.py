@@ -25,7 +25,22 @@ from sqlalchemy import create_engine, Column, String, Integer, DateTime, Text, F
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # --- Setup logging, DB Models, Request/Response Models ---
-structlog.configure(processors=[structlog.stdlib.filter_by_level, structlog.stdlib.add_logger_name, structlog.stdlib.add_log_level, structlog.stdlib.PositionalArgumentsFormatter(), structlog.processors.TimeStamper(fmt="iso"), structlog.processors.StackInfoRenderer(), structlog.processors.format_exc_info, structlog.processors.UnicodeDecoder(), structlog.processors.JSONRenderer()], context_class=dict, logger_factory=structlog.stdlib.LoggerFactory(), cache_logger_on_first_use=True)
+structlog.configure(
+    processors=[
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.processors.JSONRenderer()
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True
+)
 logger = structlog.get_logger()
 Base = declarative_base()
 
@@ -73,7 +88,8 @@ class DevelopmentTask(BaseModel):
 # --- Core Service Classes ---
 class ConfigManager:
     def __init__(self, config_file: str = "config.yaml"): 
-        self.config_file, self.config = config_file, {}
+        self.config_file = config_file
+        self.config = {}
         self.load_config()
     
     def load_config(self):
@@ -82,7 +98,64 @@ class ConfigManager:
                 self.config = yaml.safe_load(f)
         except Exception as e: 
             logger.error("Failed to load config", error=str(e))
-            raise
+            # Provide default config if file doesn't exist
+            self.config = self._get_default_config()
+    
+    def _get_default_config(self):
+        """Provide default configuration if config.yaml is missing"""
+        return {
+            "openrouter_api_key": os.environ.get("OPENROUTER_API_KEY", ""),
+            "classifier_model": "openai/gpt-4o-mini",
+            "database_url": "sqlite:///ai_portal.db",
+            "valid_task_types": ["simple_qa", "code_generation", "creative_writing"],
+            "model_tiers": {
+                "economy": ["openai/gpt-4o-mini"],
+                "standard": ["openai/gpt-4o"],
+                "premium": ["anthropic/claude-3.5-sonnet"]
+            },
+            "task_tier_map": {
+                "simple_qa": "economy",
+                "code_generation": "standard",
+                "creative_writing": "premium"
+            },
+            "model_providers": {
+                "openai/gpt-4o-mini": "OpenAI",
+                "openai/gpt-4o": "OpenAI",
+                "anthropic/claude-3.5-sonnet": "Anthropic"
+            },
+            "copyshark": {
+                "base_url": "http://localhost:3000",
+                "api_token": "",
+                "endpoints": {
+                    "generate_copy": "/api/generate-copy",
+                    "get_frameworks": "/api/frameworks",
+                    "get_niches": "/api/niches",
+                    "get_user": "/api/user/me"
+                }
+            },
+            "copyshark_functions": [
+                {
+                    "name": "generateAdCopy",
+                    "description": "Generate advertising copy for a product",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "productName": {"type": "string"},
+                            "audience": {"type": "string"},
+                            "niche": {"type": "string"},
+                            "framework": {"type": "string"},
+                            "tone": {"type": "string"}
+                        },
+                        "required": ["productName", "audience"]
+                    }
+                }
+            ],
+            "agent_urls": {},
+            "api": {
+                "host": "0.0.0.0",
+                "port": 8000
+            }
+        }
     
     def get(self, key: str, default=None): 
         return self.config.get(key, default)
@@ -160,20 +233,34 @@ class OpenSourceAIService:
             await self.session.close()
             
     async def _api_call(self, messages: List[Dict], model: str):
-        headers = {"Authorization": f"Bearer {self.openrouter_key}", "Content-Type": "application/json"}
-        payload = {"model": model, "messages": messages, "temperature": 0.7, "max_tokens": 2048}
+        headers = {
+            "Authorization": f"Bearer {self.openrouter_key}", 
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model, 
+            "messages": messages, 
+            "temperature": 0.7, 
+            "max_tokens": 2048
+        }
         async with self.session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as response:
             response.raise_for_status()
             return await response.json()
             
     async def chat_completion(self, messages: List[Dict], model: str):
         data = await self._api_call(messages, model)
-        return {'response': data['choices'][0]['message']['content'], 'cost': data.get('usage', {}).get('total_tokens', 0) * 0.000001}
+        return {
+            'response': data['choices'][0]['message']['content'], 
+            'cost': data.get('usage', {}).get('total_tokens', 0) * 0.000001
+        }
         
     async def detect_task_type(self, user_prompt: str, classifier_model: str, valid_types: List[str]):
         categories = ", ".join(f'"{t}"' for t in valid_types)
         system_prompt = f"Classify the user's message into one of these categories: {categories}. Respond with ONLY the category name in quotes."
-        data = await self._api_call([{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}], classifier_model)
+        data = await self._api_call([
+            {"role": "system", "content": system_prompt}, 
+            {"role": "user", "content": user_prompt}
+        ], classifier_model)
         detected_type = data['choices'][0]['message']['content'].strip().replace('"', '')
         return detected_type if detected_type in valid_types else "simple_qa"
     
@@ -219,7 +306,11 @@ class SimpleIntelligentRouter:
         models = self.model_tiers.get(tier_name, self.model_tiers['economy'])
         model = models[self.round_robin_counter[tier_name] % len(models)]
         self.round_robin_counter[tier_name] += 1
-        return {'model': model, 'provider': self.model_providers.get(model, 'unknown'), 'reasoning': f"Detected '{task_type}', routed to {tier_name.upper()}"}
+        return {
+            'model': model, 
+            'provider': self.model_providers.get(model, 'unknown'), 
+            'reasoning': f"Detected '{task_type}', routed to {tier_name.upper()}"
+        }
 
 def handle_errors(func: Callable) -> Callable:
     @wraps(func)
@@ -228,7 +319,14 @@ def handle_errors(func: Callable) -> Callable:
             return await func(*args, **kwargs)
         except Exception as e:
             logger.error(f"Error in {func.__name__}", exc_info=True)
-            return JSONResponse(status_code=500, content={"success": False, "response": f"An internal error occurred: {type(e).__name__}", "detail": str(e)})
+            return JSONResponse(
+                status_code=500, 
+                content={
+                    "success": False, 
+                    "response": f"An internal error occurred: {type(e).__name__}", 
+                    "detail": str(e)
+                }
+            )
     return wrapper
 
 # --- UNIFIED AI PORTAL APPLICATION ---
@@ -253,8 +351,18 @@ class UnifiedAIPortal:
     def setup_app(self):
         if not os.path.exists("uploads"): 
             os.makedirs("uploads")
-        self.app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
-        self.app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+        
+        # Check if frontend directory exists
+        if os.path.exists("frontend"):
+            self.app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+        
+        self.app.add_middleware(
+            CORSMiddleware, 
+            allow_origins=["*"], 
+            allow_credentials=True, 
+            allow_methods=["*"], 
+            allow_headers=["*"]
+        )
         
         @self.app.on_event("startup")
         async def startup(): 
@@ -271,8 +379,11 @@ class UnifiedAIPortal:
     def setup_routes(self):
         @self.app.get("/", response_class=HTMLResponse, include_in_schema=False)
         async def root():
-            with open("frontend/index.html", "r", encoding="utf-8") as f: 
-                return HTMLResponse(content=f.read())
+            try:
+                with open("frontend/index.html", "r", encoding="utf-8") as f: 
+                    return HTMLResponse(content=f.read())
+            except FileNotFoundError:
+                return HTMLResponse(content="<h1>AI Portal Backend Running</h1><p>Frontend files not found.</p>")
 
         @self.app.post("/chat", response_model=ChatResponse)
         @handle_errors
@@ -299,10 +410,16 @@ class UnifiedAIPortal:
                 # Determine task type for the enhanced message
                 final_task_type = request.task_type
                 if final_task_type == "auto":
-                    final_task_type = await self.ai_service.detect_task_type(enhanced_message, self.config.get('classifier_model'), self.config.get('valid_task_types', []))
+                    final_task_type = await self.ai_service.detect_task_type(
+                        enhanced_message, 
+                        self.config.get('classifier_model'), 
+                        self.config.get('valid_task_types', [])
+                    )
                 
                 routing_decision = self.router.route_simple(final_task_type, request.user_tier)
-                result = await self.ai_service.chat_completion([{"role": "user", "content": enhanced_message}], routing_decision['model'])
+                result = await self.ai_service.chat_completion([
+                    {"role": "user", "content": enhanced_message}
+                ], routing_decision['model'])
                 
                 response_time = time.time() - start_time
                 chat_response = ChatResponse(
@@ -318,10 +435,16 @@ class UnifiedAIPortal:
                 # Standard chat without function calls
                 final_task_type = request.task_type
                 if final_task_type == "auto":
-                    final_task_type = await self.ai_service.detect_task_type(request.message, self.config.get('classifier_model'), self.config.get('valid_task_types', []))
+                    final_task_type = await self.ai_service.detect_task_type(
+                        request.message, 
+                        self.config.get('classifier_model'), 
+                        self.config.get('valid_task_types', [])
+                    )
                 
                 routing_decision = self.router.route_simple(final_task_type, request.user_tier)
-                result = await self.ai_service.chat_completion([{"role": "user", "content": request.message}], routing_decision['model'])
+                result = await self.ai_service.chat_completion([
+                    {"role": "user", "content": request.message}
+                ], routing_decision['model'])
                 
                 response_time = time.time() - start_time
                 chat_response = ChatResponse(
@@ -383,6 +506,7 @@ class UnifiedAIPortal:
 
         # Legacy endpoints
         agent_urls = self.config.get('agent_urls', {})
+        
         @self.app.post("/delegate/marketing-copy", tags=["Agent Orchestration"])
         @handle_errors
         async def delegate_marketing_copy(topic: str = Form(...)):
@@ -397,7 +521,11 @@ class UnifiedAIPortal:
         @self.app.post("/develop-feature", tags=["Agent Orchestration"])
         @handle_errors
         async def develop_feature(task: DevelopmentTask):
-            return JSONResponse(content={"status": "Development Cycle Simulated", "task": task.task_description, "outcome": "SUCCESS"})
+            return JSONResponse(content={
+                "status": "Development Cycle Simulated", 
+                "task": task.task_description, 
+                "outcome": "SUCCESS"
+            })
 
         @self.app.post("/upload-file", tags=["File Handling"])
         @handle_errors
@@ -406,7 +534,14 @@ class UnifiedAIPortal:
             file_path = os.path.join(upload_dir, file.filename)
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-            return JSONResponse(status_code=200, content={"success": True, "filename": file.filename, "detail": "File uploaded successfully."})
+            return JSONResponse(
+                status_code=200, 
+                content={
+                    "success": True, 
+                    "filename": file.filename, 
+                    "detail": "File uploaded successfully."
+                }
+            )
 
     async def execute_function_call(self, function_name: str, arguments: Dict[str, Any]):
         """Execute a function call and return the result"""
@@ -449,35 +584,32 @@ class UnifiedAIPortal:
                 session.rollback()
 
     def run(self):
-        import os
-        import uvicorn
-
+        """Run the unified AI portal server"""
         try:
-            api_config = self.config.get('api', {})
-        
             # Render uses PORT environment variable
             port = int(os.environ.get('PORT', 8000))
             host = "0.0.0.0"  # Accept external connections
         
             logger.info(f"🚀 Starting Uvicorn server on {host}:{port}")
         
-        # Start the server with additional config
+            # Start the server with additional config
             uvicorn.run(
                 self.app, 
                 host=host, 
                 port=port,
                 log_level="info",
                 access_log=True
-        )
-        
-     try:
-    if __name__ == "__main__":
-        port = int(os.environ.get("PORT", 8000))Add commentMore actions
-        host = "0.0.0.0"
-        logger.info(f"🚀 Starting Uvicorn server for local development on {host}:{port}")
-        # This is the code that should be in the 'try' block
-        uvicorn.run(app, host=host, port=port)
+            )
+        except Exception as e:
+            logger.error(f"Failed to start server: {e}")
+            raise
 
-except Exception as e:
-    logger.error(f"Failed to start server: {e}")
-    raise
+# Main execution block
+if __name__ == "__main__":
+    try:
+        # Create and run the portal
+        portal = UnifiedAIPortal()
+        portal.run()
+    except Exception as e:
+        logger.error(f"Failed to start portal: {e}")
+        raise
