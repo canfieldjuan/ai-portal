@@ -462,12 +462,12 @@ class UnifiedAIPortal:
             logger.info(f"🚀 Starting Uvicorn server on {host}:{port}")
         
         # Start the server with additional config
-        uvicorn.run(
-            self.app, 
-            host=host, 
-            port=port,
-            log_level="info",
-            access_log=True
+            uvicorn.run(
+                self.app, 
+                host=host, 
+                port=port,
+                log_level="info",
+                access_log=True
         )
         
     except Exception as e:  # ✅ Correct indentation level
