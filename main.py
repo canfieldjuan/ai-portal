@@ -377,13 +377,17 @@ class UnifiedAIPortal:
         self.setup_routes()
 
     def setup_routes(self):
+        @self.app.get("/health")
+        async def health_check():
+            return {"status": "healthy", "message": "AI Portal is running"}
+
         @self.app.get("/", response_class=HTMLResponse, include_in_schema=False)
         async def root():
             try:
                 with open("frontend/index.html", "r", encoding="utf-8") as f: 
                     return HTMLResponse(content=f.read())
             except FileNotFoundError:
-                return HTMLResponse(content="<h1>AI Portal Backend Running</h1><p>Frontend files not found.</p>")
+                return HTMLResponse(content="<h1>AI Portal Backend Running</h1><p>Frontend files not found. <a href='/health'>Check Health</a></p>")
 
         @self.app.post("/chat", response_model=ChatResponse)
         @handle_errors
@@ -604,11 +608,14 @@ class UnifiedAIPortal:
             logger.error(f"Failed to start server: {e}")
             raise
 
+# Create the portal instance and expose the app for Gunicorn
+portal = UnifiedAIPortal()
+app = portal.app  # Expose for Gunicorn deployment
+
 # Main execution block
 if __name__ == "__main__":
     try:
-        # Create and run the portal
-        portal = UnifiedAIPortal()
+        # Run the portal directly (for local development)
         portal.run()
     except Exception as e:
         logger.error(f"Failed to start portal: {e}")
