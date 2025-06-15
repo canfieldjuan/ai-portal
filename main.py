@@ -470,9 +470,9 @@ class UnifiedAIPortal:
                 access_log=True
         )
         
-    try:
+     try:
     if __name__ == "__main__":
-        port = int(os.environ.get("PORT", 8000))
+        port = int(os.environ.get("PORT", 8000))Add commentMore actions
         host = "0.0.0.0"
         logger.info(f"🚀 Starting Uvicorn server for local development on {host}:{port}")
         # This is the code that should be in the 'try' block
