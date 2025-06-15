@@ -452,14 +452,14 @@ class UnifiedAIPortal:
         import os
         import uvicorn
     
-    try:
-        api_config = self.config.get('api', {})
+        try:  # ✅ Now properly indented inside the method
+            api_config = self.config.get('api', {})
         
-        # Render uses PORT environment variable
-        port = int(os.environ.get('PORT', 8000))
-        host = "0.0.0.0"  # Accept external connections
+            # Render uses PORT environment variable
+            port = int(os.environ.get('PORT', 8000))
+            host = "0.0.0.0"  # Accept external connections
         
-        logger.info(f"🚀 Starting Uvicorn server on {host}:{port}")
+            logger.info(f"🚀 Starting Uvicorn server on {host}:{port}")
         
         # Start the server with additional config
         uvicorn.run(
