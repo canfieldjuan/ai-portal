@@ -451,8 +451,8 @@ class UnifiedAIPortal:
     def run(self):
         import os
         import uvicorn
-    
-        try:  # ✅ Now properly indented inside the method
+
+        try:
             api_config = self.config.get('api', {})
         
             # Render uses PORT environment variable
@@ -470,13 +470,10 @@ class UnifiedAIPortal:
                 access_log=True
         )
         
-    except Exception as e:  # ✅ Correct indentation level
+    except Exception as e:
         logger.error(f"Failed to start server: {e}")
         raise
 
 if __name__ == "__main__":
-    if not os.path.exists("config.yaml"):
-        print("FATAL: config.yaml not found. Please create it before running.")
-    else:
-        portal = UnifiedAIPortal()
-        portal.run()
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
