@@ -1,0 +1,53 @@
+/* frontend/style.css (v3.0 - Unified) */
+/* (Includes styles for all features) */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Roboto', sans-serif; background: #111827; color: #F9FAFB; min-height: 100vh; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; gap: 20px; }
+.header { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(75, 85, 99, 0.5); border-radius: 20px; padding: 20px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); }
+.header h1 { color: #E5E7EB; font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+.header p { color: #9CA3AF; font-size: 1.1rem; }
+.status-bar { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+.status-item { background: #374151; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; color: #D1D5DB; border: 1px solid #4B5563; }
+.status-item.active { background: #4F46E5; color: #FFFFFF; border-color: #6366F1; }
+.chat-container { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(75, 85, 99, 0.5); border-radius: 20px; flex: 1; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); min-height: 60vh; }
+.chat-messages { flex: 1; padding: 20px; overflow-y: auto; }
+.message { margin-bottom: 20px; animation: slideIn 0.3s ease-out; display: flex; max-width: 85%; flex-direction: column; }
+.message.user { align-self: flex-end; align-items: flex-end; }
+.message.ai { align-self: flex-start; align-items: flex-start; }
+.message-content { padding: 15px 20px; border-radius: 18px; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; width: fit-content; }
+.message.user .message-content { background: #4F46E5; color: white; border-bottom-right-radius: 5px; }
+.message.ai .message-content { background: #374151; color: #F3F4F6; border-bottom-left-radius: 5px; }
+.message-meta { font-size: 0.8rem; color: #9CA3AF; margin-top: 5px; padding: 0 5px; }
+.input-area { padding: 20px; border-top: 1px solid #374151; background: rgba(17, 24, 39, 0.8); display: flex; flex-direction: column; gap: 15px; }
+
+/* RESTORED: File Upload Styles */
+.drop-zone { border: 2px dashed #4B5563; border-radius: 10px; padding: 20px; text-align: center; color: #9CA3AF; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; }
+.drop-zone.dragover { background-color: rgba(79, 70, 229, 0.2); border-color: #6366F1; }
+.file-attachments { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.file-attachment { background: #374151; padding: 5px 10px; border-radius: 6px; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; }
+.file-attachment button { background: none; border: none; color: #9CA3AF; cursor: pointer; font-size: 1.2rem; }
+.file-attachment button:hover { color: #F9FAFB; }
+
+.controls-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+.control-group { display: flex; flex-direction: column; gap: 5px; flex-grow: 1; }
+.control-group label { font-size: 0.8rem; color: #9CA3AF; text-transform: uppercase; font-weight: 600; }
+.control-select { width: 100%; padding: 10px; background-color: #1F2937; color: #F9FAFB; border: 2px solid #4B5563; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; }
+.control-select:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); }
+.control-select:disabled { background-color: #374151; cursor: not-allowed; opacity: 0.5; }
+.toggle-switch { position: relative; display: inline-block; width: 120px; height: 38px; }
+.toggle-switch-checkbox { display: none; }
+.toggle-switch-label { display: block; overflow: hidden; cursor: pointer; border: 2px solid #4B5563; border-radius: 10px; }
+.toggle-switch-inner { display: block; width: 200%; margin-left: -100%; transition: margin 0.3s ease-in 0s; }
+.toggle-switch-inner:before, .toggle-switch-inner:after { display: block; float: left; width: 50%; height: 34px; padding: 0; line-height: 34px; font-size: 14px; color: white; font-weight: bold; box-sizing: border-box; }
+.toggle-switch-inner:before { content: "Auto"; padding-left: 10px; background-color: #4F46E5; color: #FFFFFF; }
+.toggle-switch-inner:after { content: "Manual"; padding-right: 10px; background-color: #374151; color: #9CA3AF; text-align: right; }
+.toggle-switch-switch { display: block; width: 24px; margin: 5px; background: #FFFFFF; position: absolute; top: 0; bottom: 0; right: 82px; border: 2px solid #4B5563; border-radius: 6px; transition: all 0.3s ease-in 0s; }
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-inner { margin-left: 0; }
+.toggle-switch-checkbox:checked + .toggle-switch-label .toggle-switch-switch { right: 0px; }
+.input-row { display: flex; gap: 10px; align-items: flex-end; }
+.input-group { flex: 1; }
+.input-field { width: 100%; min-height: 50px; max-height: 150px; padding: 15px; border: 2px solid #4B5563; border-radius: 15px; font-size: 1rem; resize: none; font-family: inherit; background: #1F2937; color: #F9FAFB; transition: all 0.2s ease; overflow-y: auto; }
+.input-field:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); }
+.send-button { background: #4F46E5; color: white; border: none; width: 50px; height: 50px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: all 0.2s ease; flex-shrink: 0; }
+.send-button:hover { background: #6366F1; transform: scale(1.05); }
+.send-button:disabled { background: #4B5563; cursor: not-allowed; transform: none; }
