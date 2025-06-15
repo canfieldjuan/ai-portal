@@ -470,7 +470,7 @@ class UnifiedAIPortal:
             access_log=True
         )
         
-    except Exception as e:
+    except Exception as e:  # ✅ Correct indentation level
         logger.error(f"Failed to start server: {e}")
         raise
 
