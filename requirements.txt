@@ -1,7 +1,9 @@
-fastapi>=0.100.0
-uvicorn>=0.23.0
-aiohttp>=3.8.0
-pyyaml>=6.0.0
-structlog>=23.1.0
-sqlalchemy>=2.0.20
-pydantic>=2.8.0
+--only-binary=all
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+aiohttp==3.9.1
+pyyaml==6.0.1
+structlog==23.2.0
+sqlalchemy==2.0.25
+pydantic==2.5.2
