@@ -1,72 +1,321 @@
-<!-- frontend/index.html (v3.0 - Unified) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Command Center</title>
-    <link rel="stylesheet" href="/frontend/style.css">
+    <title>CopyShark - Intelligent Copy Generator</title>
+    <style>
+        :root { --primary: #667eea; --primary-dark: #5a67d8; --success: #10b981; --error: #ef4444; --gray-100: #f3f4f6; --gray-200: #e5e7eb; --gray-700: #374151; --gray-800: #1f2937; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--gray-100); color: var(--gray-800); margin: 0; display: flex; justify-content: center; align-items: flex-start; padding: 40px; min-height: 100vh; }
+        .container { width: 100%; max-width: 900px; }
+        .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .auth-panel { max-width: 420px; margin: auto; }
+        h1, h2 { text-align: center; color: var(--primary); margin-top: 0; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid var(--gray-200); border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+        .btn { width: 100%; background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background-color 0.3s ease; }
+        .btn:hover:not(:disabled) { background: var(--primary-dark); }
+        .btn:disabled { background: #9fa6b2; cursor: not-allowed; }
+        .link { text-align: center; margin-top: 20px; font-size: 14px; }
+        .link a { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .error-message { background-color: #fee2e2; color: #b91c1c; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; text-align: center; }
+        .results-panel { margin-top: 30px; }
+        .result-card { border: 1px solid var(--gray-200); border-left: 4px solid var(--primary); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+        .result-card h3 { margin-top: 0; font-size: 14px; text-transform: uppercase; color: var(--primary); }
+        .result-card p { margin: 0; white-space: pre-wrap; }
+        [hidden] { display: none !important; }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🤖 Command Center V3</h1>
-            <p>Unified AI Portal with Chat, Agent Delegation, and File Uploads.</p>
-            <div class="status-bar">
-                <div class="status-item active" id="session-status">Session: ...</div>
-                <div class="status-item" id="model-status">Model: Standby</div>
-                <div class="status-item" id="cost-status">Cost: $0.0000</div>
-                <div class="status-item" id="time-status">Time: 0s</div>
+        <div id="auth-view">
+            <div id="login-panel" class="panel auth-panel">
+                <h1>Welcome Back</h1>
+                <div id="login-error" class="error-message" hidden></div>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+                <div class="link">No account? <a href="#" id="show-register">Register</a></div>
+            </div>
+            <div id="register-panel" class="panel auth-panel" hidden>
+                <h1>Create Account</h1>
+                <div id="register-error" class="error-message" hidden></div>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" required>
+                    </div>
+                    <button type="submit" class="btn">Create Account</button>
+                </form>
+                <div class="link">Have an account? <a href="#" id="show-login">Login</a></div>
             </div>
         </div>
-
-        <div class="chat-container">
-            <div class="chat-messages" id="chatMessages">
-                <div class="message ai">
-                    <div class="message-content">
-                        ✅ **System Restored & Unified:** All features are online. You can now chat, use slash commands for agent tasks (e.g., `/develop New Login Page`), and drag-and-drop files for upload.
-                    </div>
-                    <div class="message-meta">AI Partner • Ready</div>
-                </div>
+        <div id="app-view" class="panel" hidden>
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1>🦈 CopyShark</h1>
+                <button id="logout-btn" class="btn" style="width: auto; padding: 8px 16px; font-size: 14px; background: var(--gray-700);">Logout</button>
             </div>
-
-            <div class="input-area" id="inputArea">
-                <!-- RESTORED: File Drop Zone from your original design -->
-                <div class="drop-zone" id="dropZone">
-                    <p>📁 Drag & Drop Files Here or Click to Select</p>
+            <div id="user-info" style="text-align: center; padding: 10px; background: #eee; border-radius: 8px; margin-bottom: 20px;"></div>
+            <div id="upgrade-section" hidden>
+                <p>You are on the Free plan. <strong>Upgrade to Pro</strong> for unlimited generations!</p>
+                <button id="upgrade-btn" class="btn" style="background-color: var(--success); margin-top: 10px;">Upgrade Now</button>
+            </div>
+            <form id="generator-form">
+                <h2 style="margin-bottom: 20px;">Generate New Copy</h2>
+                <div class="form-group">
+                    <label for="productName">Product/Service Name</label>
+                    <input type="text" id="productName" required>
                 </div>
-                <div class="file-attachments" id="fileAttachments"></div>
-                <input type="file" id="fileInput" multiple style="display: none;">
-
-                <div class="controls-row">
-                    <div class="control-group">
-                        <label>Routing Mode</label>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="routingModeToggle" class="toggle-switch-checkbox" checked>
-                            <label class="toggle-switch-label" for="routingModeToggle">
-                                <span class="toggle-switch-inner"></span>
-                                <span class="toggle-switch-switch"></span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="control-group" id="taskTypeGroup">
-                        <label for="taskTypeSelect">Manual Task Type</label>
-                        <select id="taskTypeSelect" class="control-select">
-                            <option value="simple_qa">Simple Q&A</option>
-                            <option value="code_generation">Code Generation</option>
-                            <option value="creative_writing">Creative Writing</option>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label for="audience">Target Audience</label>
+                    <input type="text" id="audience" required>
                 </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <textarea class="input-field" id="messageInput" placeholder="Send a message or use a slash command..." rows="1"></textarea>
-                    </div>
-                    <button class="send-button" id="sendButton">➤</button>
+                <div class="form-group">
+                    <label for="niche">Niche</label>
+                    <select id="niche" required></select>
                 </div>
+                <div class="form-group">
+                    <label for="framework">Framework</label>
+                    <select id="framework" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="tone">Tone</label>
+                    <select id="tone" required>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <button type="submit" id="generate-btn" class="btn">Generate Copy</button>
+            </form>
+            <div id="results-panel" class="results-panel" hidden>
+                <h2>Results</h2>
+                <div id="results-display"></div>
             </div>
         </div>
     </div>
-    <script src="/frontend/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ui = {
+                authView: document.getElementById('auth-view'), 
+                appView: document.getElementById('app-view'),
+                loginPanel: document.getElementById('login-panel'), 
+                registerPanel: document.getElementById('register-panel'),
+                userInfo: document.getElementById('user-info'), 
+                upgradeSection: document.getElementById('upgrade-section'),
+                generateBtn: document.getElementById('generate-btn'), 
+                resultsPanel: document.getElementById('results-panel'),
+                resultsDisplay: document.getElementById('results-display')
+            };
+            
+            document.getElementById('show-register').addEventListener('click', (e) => { e.preventDefault(); toggleAuthPanels(false); });
+            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); toggleAuthPanels(true); });
+            document.getElementById('register-form').addEventListener('submit', handleRegister);
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('generator-form').addEventListener('submit', handleGenerateCopy);
+            document.getElementById('upgrade-btn').addEventListener('click', handleUpgrade);
+            
+            initializeApp();
+
+            async function initializeApp() {
+                if (getToken()) {
+                    await showAppView();
+                    await populateSelects();
+                    await updateUserInfo();
+                } else {
+                    showAuthView();
+                }
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('checkout') === 'success') {
+                    alert('Payment successful! You are now on the Pro plan.');
+                    window.history.pushState({}, '', '/');
+                    updateUserInfo();
+                }
+            }
+
+            async function handleRegister(e) {
+                e.preventDefault();
+                const email = document.getElementById('register-email').value;
+                const password = document.getElementById('register-password').value;
+                
+                const { success, error } = await apiCall('/api/auth/register', 'POST', { email, password });
+                if (success) {
+                    alert('Account created successfully! Please login.');
+                    toggleAuthPanels(true);
+                } else {
+                    showError('register-error', error);
+                }
+            }
+            
+            async function handleLogin(e) {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                
+                const { success, token, error } = await apiCall('/api/auth/login', 'POST', { email, password });
+                if (success) {
+                    saveToken(token);
+                    await showAppView();
+                    await populateSelects();
+                    await updateUserInfo();
+                } else {
+                    showError('login-error', error);
+                }
+            }
+            
+            function handleLogout() { 
+                localStorage.removeItem('authToken'); 
+                showAuthView(); 
+            }
+            
+            async function handleGenerateCopy(e) {
+                e.preventDefault();
+                ui.generateBtn.disabled = true; 
+                ui.generateBtn.textContent = 'Generating...';
+                
+                const body = {
+                    productName: document.getElementById('productName').value, 
+                    audience: document.getElementById('audience').value,
+                    niche: document.getElementById('niche').value, 
+                    framework: document.getElementById('framework').value,
+                    tone: document.getElementById('tone').value,
+                };
+                
+                const { success, copy, error, requiresUpgrade } = await apiCall('/api/generate-copy', 'POST', body, true);
+                if (success) {
+                    displayResults(copy);
+                } else {
+                    if (requiresUpgrade) ui.upgradeSection.hidden = false;
+                    alert(`Error: ${error}`);
+                }
+                ui.generateBtn.disabled = false; 
+                ui.generateBtn.textContent = 'Generate Copy';
+            }
+
+            async function handleUpgrade() {
+                const { success, url, error } = await apiCall('/api/payments/create-checkout-session', 'POST', {}, true);
+                if (success) window.location.href = url; 
+                else alert(`Error: ${error}`);
+            }
+
+            function toggleAuthPanels(showLogin) { 
+                ui.loginPanel.hidden = !showLogin;
+                ui.registerPanel.hidden = showLogin;
+                document.getElementById('login-error').hidden = true;
+                document.getElementById('register-error').hidden = true;
+            }
+            
+            function showAuthView() { 
+                ui.appView.hidden = true; 
+                ui.authView.hidden = false; 
+                toggleAuthPanels(true); 
+            }
+            
+            async function showAppView() {
+                ui.authView.hidden = true;
+                ui.appView.hidden = false;
+            }
+            
+            async function updateUserInfo() {
+                const { success, email, plan, usage } = await apiCall('/api/user/me', 'GET', null, true);
+                if (success) {
+                    ui.userInfo.innerHTML = `Logged in as <strong>${email}</strong> | Plan: <strong>${plan.toUpperCase()}</strong> | Usage: <strong>${usage}</strong>`;
+                    ui.upgradeSection.hidden = (plan === 'pro');
+                }
+            }
+
+            async function populateSelects() {
+                const [frameworksRes, nichesRes] = await Promise.all([
+                    apiCall('/api/frameworks'),
+                    apiCall('/api/niches')
+                ]);
+                
+                if (frameworksRes.success) {
+                    const frameworkSelect = document.getElementById('framework');
+                    frameworkSelect.innerHTML = '';
+                    for (const [key, value] of Object.entries(frameworksRes)) {
+                        if (key !== 'success') {
+                            const option = document.createElement('option');
+                            option.value = key;
+                            option.textContent = value.name;
+                            frameworkSelect.appendChild(option);
+                        }
+                    }
+                }
+                
+                if (nichesRes.success) {
+                    const nicheSelect = document.getElementById('niche');
+                    nicheSelect.innerHTML = '';
+                    for (const [key, value] of Object.entries(nichesRes)) {
+                        if (key !== 'success') {
+                            const option = document.createElement('option');
+                            option.value = key;
+                            option.textContent = value.name;
+                            nicheSelect.appendChild(option);
+                        }
+                    }
+                }
+            }
+            
+            function displayResults(copy) {
+                ui.resultsDisplay.innerHTML = `
+                    <div class="result-card">
+                        <h3>Headline</h3>
+                        <p>${copy.headline}</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Body</h3>
+                        <p>${copy.body}</p>
+                    </div>
+                    <div class="result-card">
+                        <h3>Call to Action</h3>
+                        <p>${copy.cta}</p>
+                    </div>
+                `;
+                ui.resultsPanel.hidden = false;
+            }
+            
+            function showError(id, msg) { 
+                const errorEl = document.getElementById(id);
+                errorEl.textContent = msg;
+                errorEl.hidden = false;
+            }
+            
+            function saveToken(token) { localStorage.setItem('authToken', token); }
+            function getToken() { return localStorage.getItem('authToken'); }
+
+            async function apiCall(endpoint, method = 'GET', body = null, secured = false) {
+                try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (secured) {
+                        const token = getToken();
+                        if (!token) throw new Error('Authentication token not found.');
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+                    const options = { method, headers, body: body ? JSON.stringify(body) : null };
+                    const response = await fetch(endpoint, options);
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    return { success: true, ...data };
+                } catch (err) {
+                    return { success: false, error: err.message };
+                }
+            }
+        });
+    </script>
 </body>
 </html>
