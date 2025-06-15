@@ -97,9 +97,18 @@ class ConfigManager:
             with open(self.config_file, 'r') as f: 
                 self.config = yaml.safe_load(f)
         except Exception as e: 
-            logger.error("Failed to load config", error=str(e))
+            logger.warning("Config file not found, using defaults", error=str(e))
             # Provide default config if file doesn't exist
             self.config = self._get_default_config()
+        
+        # Override with environment variables if they exist
+        if os.environ.get("OPENROUTER_API_KEY"):
+            self.config["openrouter_api_key"] = os.environ.get("OPENROUTER_API_KEY")
+        
+        # Log configuration status (without sensitive data)
+        logger.info("Configuration loaded", 
+                   has_openrouter_key=bool(self.config.get("openrouter_api_key")),
+                   database_url=self.config.get("database_url", "not_set"))
     
     def _get_default_config(self):
         """Provide default configuration if config.yaml is missing"""
