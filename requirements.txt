@@ -1,8 +1,8 @@
-fastapi>=0.110.0Add commentMore actions
+fastapi>=0.110.0
 uvicorn>=0.30.0
 aiohttp>=3.9.0
 pyyaml>=6.0.1
 structlog>=24.0.0
 sqlalchemy>=2.0.30
-pydantic-core==2.14.5
+pydantic>=2.8.0
 python-multipart>=0.0.9
