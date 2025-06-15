@@ -1,14 +1,7 @@
-
-# Force pre-compiled wheels to avoid Rust compilation
---prefer-binary
---only-binary=pydantic-core,cryptography
-
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-aiohttp==3.8.5
-pyyaml==6.0.1
-structlog==23.2.0
-sqlalchemy==2.0.25
-
-# Use older pydantic that has better wheel support
-pydantic==2.4.2
+fastapi>=0.100.0
+uvicorn>=0.23.0
+aiohttp>=3.8.0
+pyyaml>=6.0.0
+structlog>=23.1.0
+sqlalchemy>=2.0.20
+pydantic>=2.8.0
